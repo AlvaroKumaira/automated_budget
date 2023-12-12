@@ -17,3 +17,16 @@ interface/design.ui
 interface/resources_rc.qrc
 
 main.spec
+/.idea/.gitignore
+/database/__init__.py
+/interface/__init__.py
+/processing/__init__.py
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/sqldialects.xml
+/.idea/vcs.xml
+/.idea/modules.xml
+/.idea/misc.xml
+/.idea/automated_budget.iml
+/build.bat
+/info.log
