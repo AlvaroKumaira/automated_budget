@@ -1,0 +1,19 @@
+# Ignore database configuration file
+database/db_config.ini
+
+# Ignore Python virtual environments
+venv/
+
+
+# Ignore the dependencies folder
+dependencies/
+
+# Ignore the build folders
+dist/
+build/
+
+# Ignore the .ui file
+interface/design.ui
+interface/resources_rc.qrc
+
+main.spec
