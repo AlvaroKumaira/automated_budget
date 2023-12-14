@@ -15,6 +15,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.save_progressbar.hide()
         self.budget_table.setSelectionBehavior(QTableWidget.SelectItems)
         self.budget_table.setSelectionMode(QTableWidget.MultiSelection)
+        self.budget_table.horizontalHeader().setSectionsClickable(False)
 
         self.showMaximized()
 

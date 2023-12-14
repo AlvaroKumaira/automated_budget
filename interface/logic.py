@@ -1,5 +1,6 @@
 import logging
 import pandas as pd
+import numpy as np
 from PyQt5.QtWidgets import QMessageBox, QWidget, QTableWidgetItem
 from PyQt5.QtCore import QItemSelectionModel, Qt, QThreadPool
 from . import resources_rc
@@ -57,7 +58,7 @@ class MainLogic:
             self.client_name = "Geral"
         else:
             formated_name = name.strip().title()
-            self.ui.info_label.setText(f"Info: {formated_name}")
+            self.ui.info_label.setText(formated_name)
             self.client_name = formated_name
 
     def add_row(self):
@@ -87,7 +88,20 @@ class MainLogic:
             row_data = []
             for column in range(table_widget.columnCount()):
                 item = table_widget.item(row, column)
-                row_data.append(item.text() if item is not None else "")
+                if item is not None:
+                    text = item.text()
+                    # Convert to float if the column is supposed to be numeric and the text is not '-'
+                    if column >= self.column_indices['Quantidade'] and text != '-':
+                        # Remove formatting and convert to float
+                        number = float(text.replace('.', '').replace(',', '.'))
+                        row_data.append(number)
+                    elif text == '-':
+                        # Append a NaN where '-' is found
+                        row_data.append(np.nan)
+                    else:
+                        row_data.append(text)
+                else:
+                    row_data.append("")
             data.append(row_data)
 
         # Use the keys from column_indices as column names
@@ -95,6 +109,11 @@ class MainLogic:
 
         # Create a DataFrame
         df = pd.DataFrame(data, columns=column_names)
+
+        # Convert columns after 'Quantidade' to numeric, errors='coerce' will handle '-' as NaN
+        numeric_columns = column_names[self.column_indices['Quantidade'] + 1:]
+        df[numeric_columns] = df[numeric_columns].apply(pd.to_numeric, errors='coerce')
+
         return df
 
 
@@ -137,14 +156,9 @@ class TableLogic(MainLogic):
             if selected_item is not None:
                 cell_value = selected_item.data(Qt.EditRole)
                 if cell_value != '-':
-                    selected_value = float(cell_value.replace(",", "."))
-                    selected_value_to_table = QTableWidgetItem(selected_item)
+                    selected_value = float(cell_value)
                 else:
                     selected_value = cell_value
-                    selected_value_to_table = QTableWidgetItem(selected_item)
-
-                # Apply setFlags to description_to_table
-                selected_value_to_table.setFlags(selected_value_to_table.flags() & ~Qt.ItemIsEditable)
 
                 # Calculate the adjusted price for "Preço Unitário"
                 original_price = float(selected_value)
@@ -168,11 +182,12 @@ class TableLogic(MainLogic):
                 # Create QTableWidgetItem with the adjusted price
                 adjusted_price_item = FloatTableWidgetItem(original_price)
                 adjusted_price_item.setFlags(adjusted_price_item.flags() & ~Qt.ItemIsEditable)
+                adjusted_price_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
                 # Set the adjusted price to "Preço Unitário"
                 self.ui.budget_table.setItem(row, self.column_indices["Preço unitário"], adjusted_price_item)
 
-                # Try to get the value at column index of "Quantidade" and multiply
+                # Try to get the value at column index of "Quantidade" and multiply for the Preço Final column
                 item_at_index_quantity = self.ui.budget_table.item(row, self.column_indices["Quantidade"])
                 if item_at_index_quantity is not None:
                     try:
@@ -183,6 +198,7 @@ class TableLogic(MainLogic):
                         # Use FloatTableWidgetItem for setting the result
                         result_value_to_table = FloatTableWidgetItem(result_value)
                         result_value_to_table.setFlags(result_value_to_table.flags() & ~Qt.ItemIsEditable)
+                        result_value_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
                         # Set the result to the column at index of "Preço final"
                         self.ui.budget_table.setItem(row, self.column_indices["Preço final"], result_value_to_table)
@@ -209,6 +225,7 @@ class TableLogic(MainLogic):
                             margin_item = QTableWidgetItem("-")
 
                         margin_item.setFlags(margin_item.flags() & ~Qt.ItemIsEditable)
+                        margin_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                         self.ui.budget_table.setItem(row, self.column_indices["Margem(%)"], margin_item)
 
     def handle_item_cell_change(self, row, column):
@@ -293,7 +310,9 @@ class TableLogic(MainLogic):
 
             # Apply setFlags to description_to_table
             description_to_table.setFlags(description_to_table.flags() & ~Qt.ItemIsEditable)
-            self.ui.budget_table.setItem(row, description_column_index, QTableWidgetItem(description_to_table))
+            description_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+            self.ui.budget_table.setItem(row, description_column_index, description_to_table)
             self.ui.budget_table.resizeColumnsToContents()
         else:
             group_code = item_df['B1_ZGRUPO'].iloc[0]
@@ -303,7 +322,9 @@ class TableLogic(MainLogic):
 
             # Apply setFlags to description_to_table
             description_to_table.setFlags(description_to_table.flags() & ~Qt.ItemIsEditable)
-            self.ui.budget_table.setItem(row, description_column_index, QTableWidgetItem(description_to_table))
+            description_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+            self.ui.budget_table.setItem(row, description_column_index, description_to_table)
             self.ui.budget_table.resizeColumnsToContents()
 
     def update_quantity(self, quantity_df, row):
@@ -314,7 +335,9 @@ class TableLogic(MainLogic):
 
             # Apply setFlags to cost_to_table
             quantity_to_table.setFlags(quantity_to_table.flags() & ~Qt.ItemIsEditable)
-            self.ui.budget_table.setItem(row, quantity_column_index, QTableWidgetItem(quantity_to_table))
+            quantity_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+            self.ui.budget_table.setItem(row, quantity_column_index, quantity_to_table)
             self.ui.budget_table.resizeColumnsToContents()
         else:
             quantity = quantity_df['quantidade'].iloc[0]
@@ -322,7 +345,9 @@ class TableLogic(MainLogic):
 
             # Apply setFlags to cost_to_table
             quantity_to_table.setFlags(quantity_to_table.flags() & ~Qt.ItemIsEditable)
-            self.ui.budget_table.setItem(row, quantity_column_index, QTableWidgetItem(quantity_to_table))
+            quantity_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+            self.ui.budget_table.setItem(row, quantity_column_index, quantity_to_table)
             self.ui.budget_table.resizeColumnsToContents()
 
     def update_cost(self, cost_df, row):
@@ -333,8 +358,9 @@ class TableLogic(MainLogic):
 
             # Apply setFlags to cost_to_table
             cost_to_table.setFlags(cost_to_table.flags() & ~Qt.ItemIsEditable)
+            cost_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-            self.ui.budget_table.setItem(row, cost_column_index, QTableWidgetItem(cost_to_table))
+            self.ui.budget_table.setItem(row, cost_column_index, cost_to_table)
             self.ui.budget_table.resizeColumnsToContents()
         else:
             cost_value = cost_df['Average'].iloc[0]
@@ -342,6 +368,7 @@ class TableLogic(MainLogic):
 
             # Apply setFlags to cost_to_table
             cost_to_table.setFlags(cost_to_table.flags() & ~Qt.ItemIsEditable)
+            cost_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
             self.costs[row] = cost_value
             self.ui.budget_table.setItem(row, cost_column_index, cost_to_table)
@@ -351,12 +378,13 @@ class TableLogic(MainLogic):
         general_sale_column_index = self.column_indices["U.V. Geral"]
         if general_df is None or general_df.empty:
             general_sale = "-"
-            general_sale_to_table = QTableWidgetItem(general_sale)
+            general_sale_to_table = FloatTableWidgetItem(general_sale)
 
             # Apply setFlags to general_sale_to_table
             general_sale_to_table.setFlags(general_sale_to_table.flags() & ~Qt.ItemIsEditable)
+            general_sale_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-            self.ui.budget_table.setItem(row, general_sale_column_index, QTableWidgetItem(general_sale_to_table))
+            self.ui.budget_table.setItem(row, general_sale_column_index, general_sale_to_table)
             self.ui.budget_table.resizeColumnsToContents()
         else:
             sale_value = general_df['ValorUnitario'].iloc[0]
@@ -364,8 +392,9 @@ class TableLogic(MainLogic):
 
             # Apply setFlags to general_sale_to_table
             general_sale_to_table.setFlags(general_sale_to_table.flags() & ~Qt.ItemIsEditable)
+            general_sale_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-            self.ui.budget_table.setItem(row, general_sale_column_index, QTableWidgetItem(general_sale_to_table))
+            self.ui.budget_table.setItem(row, general_sale_column_index, general_sale_to_table)
             self.ui.budget_table.resizeColumnsToContents()
 
     def update_client_sale(self, client_sale_df, row):
@@ -376,8 +405,9 @@ class TableLogic(MainLogic):
 
             # Apply setFlags to client_sale_to_table
             client_sale_to_table.setFlags(client_sale_to_table.flags() & ~Qt.ItemIsEditable)
+            client_sale_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-            self.ui.budget_table.setItem(row, client_sale_column_index, QTableWidgetItem(client_sale_to_table))
+            self.ui.budget_table.setItem(row, client_sale_column_index, client_sale_to_table)
             self.ui.budget_table.resizeColumnsToContents()
         else:
             client_sale_value = client_sale_df['ValorUnitario'].iloc[0]
@@ -385,8 +415,9 @@ class TableLogic(MainLogic):
 
             # Apply setFlags to client_sale_to_table
             client_sale_to_table.setFlags(client_sale_to_table.flags() & ~Qt.ItemIsEditable)
+            client_sale_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-            self.ui.budget_table.setItem(row, client_sale_column_index, QTableWidgetItem(client_sale_to_table))
+            self.ui.budget_table.setItem(row, client_sale_column_index, client_sale_to_table)
             self.ui.budget_table.resizeColumnsToContents()
 
     def update_unit_price(self, row):
@@ -421,8 +452,9 @@ class TableLogic(MainLogic):
 
                     # Apply setFlags to client_sale_to_table
                     result_to_table.setFlags(result_to_table.flags() & ~Qt.ItemIsEditable)
+                    result_to_table.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-                    self.ui.budget_table.setItem(row, unit_price_column_index, QTableWidgetItem(result_to_table))
+                    self.ui.budget_table.setItem(row, unit_price_column_index, result_to_table)
                     self.ui.budget_table.resizeColumnsToContents()
                 else:
                     logger.error("No matching factor found")
