@@ -22,7 +22,7 @@ def item_info(item_code):
 """
 
 
-def sales_six_months_client(filial, group_code, client_code):
+def sales_six_months_client(filial, client_code, group_code):
     return f"""
         SELECT TOP 1
         SD2.D2_TOTAL / NULLIF(SD2.D2_QUANT, 0) AS ValorUnitario
